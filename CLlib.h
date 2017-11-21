@@ -20,4 +20,8 @@ namespace CLlib
 	void testCL(int deviceNum);
 
 	cl_program load_program(cl_context context, const char* filename);
+
+	unsigned char to_uchar(string data);
+
+	void data_Pruning(string source, string dest, int start_Idx = 0);
 }
