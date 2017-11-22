@@ -1,0 +1,5 @@
+g++ -I C:\Users\Acer\Documents\opencv\build\include -c -o CLlib.o CLlib.cpp
+
+g++ -I C:\Users\Acer\Documents\opencv\build\include -c -o main.o main.cpp
+
+g++ -o main -I C:\Users\Acer\Documents\opencv\build\include main.o CLlib.o -fopenmp -lpthread -L C:\Users\Acer\Documents\opencv\build\x64\vc14\lib -lopencv_core330d -lopencv_imgproc330d -lopencv_highgui330d

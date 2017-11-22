@@ -209,49 +209,52 @@ namespace CLlib
 		return program;
 	}
 
-	void data_Pruning(string source, string dest, int start_Idx)
-	{	
+	void data_Pruning(string source, string dest, int dataSize, int start_Idx)
+	{
+		int num_thread = omp_get_num_threads() -1;
 		ifstream iData(source, ios::in);
+		vector<stringstream> oData(num_thread);
 		vector<string> raw_Data;
 		string head, line;
 		getline(iData, head);
 
-		//讀取圖片
-		while (iData.peek() != EOF && getline(iData, line))
-		{
-			raw_Data.push_back(line);
-		}
-		iData.close();
-
 		//變數宣告
-		int current_num_threads = omp_get_num_threads();
-		vector<Mat> srcImages(raw_Data.size());
-		vector<vector<uchar>> srcVec(raw_Data.size());
-
-		#pragma omp parallel num_threads(current_num_threads-1) shared(start_Idx, raw_Data, srcImages, srcVec, oData)
+		vector<Mat> srcImages(dataSize);
+		vector<vector<uchar>> srcVec(dataSize);
+	
+		#pragma omp parallel num_threads(num_thread) shared(start_Idx, raw_Data, srcImages, srcVec, oData)
 		{
-			//資料處理
-			#pragma omp parallel for schedule(static)
-			for (int i = 0; i < raw_Data.size(); i++)
+			//讀取圖片
+			#pragma omp single
 			{
-				vector<string> readData = dataManipulate::string_partition(line, ',');
-				vector<uchar> img;
-
-				for (int i = start_Idx; i < readData.size(); i++)
+				int idx = 0;
+				while (iData.peek() != EOF && getline(iData, line))
 				{
-					img.push_back(dataManipulate::to_uchar(readData[i]));
+					#pragma omp task shared(srcImages) firstprivate(idx++)
+					{
+						vector<uchar> img;
+						vector<string> readData;
+						readData = string_partition(line, ',');
+
+						for (int i = start_Idx; i < readData.size(); i++)
+						{
+							img.push_back(to_uchar(readData[i]));
+						}
+						Mat img_Mat(Size(28, 28), CV_8UC1, img.data());
+						srcImages[idx] = move(img_Mat);
+					}
 				}
-				Mat img_Mat(Size(28, 28), CV_8UC1, img.data());
-				srcImages[i] = move(img_Mat);
+				#pragma omp taskwait
+				iData.close();
 			}
 
 			//處理雜訊
-			#pragma omp parallel for schedule(static)
+			#pragma omp for nowait schedule(static)
 			for (int i = 0; i < srcImages.size(); i++)
 			{
 				medianBlur(srcImages[i], srcImages[i], 3);
 				equalizeHist(srcImages[i], srcImages[i]);
-	
+
 				//Mat to 1-dim
 				srcImages[i] = srcImages[i].reshape(0, 1);
 				const uchar* p = srcImages[i].data;
@@ -260,24 +263,35 @@ namespace CLlib
 			}
 
 			//輸出圖片
-			ofstream oData(dest+"i", ios::out);
-			#pragma omp single 
-			{
-				oData << head << endl;
-			}
+			int thread_Id = omp_get_thread_num();
 
-			#pragma omp if(start_Idx<1) barrier  
-			#pragma omp parallel for schedule(static)
+			#pragma omp for schedule(static)
 			for (int i = 0; i < srcVec.size(); i++)
 			{
 				for (int j = 0; j < srcVec[i].size(); j++)
 				{
-					oData << static_cast<unsigned>(srcVec[i][j]) << ",";
+					oData[thread_Id] << static_cast<unsigned>(srcVec[i][j]) << ",";
 				}
-				oData << endl;
+				oData[thread_Id] << endl;
 			}
 			#pragma omp barrier
-			oData.close();
+
+			//輸出結果
+			#pragma omp single
+			{
+				ofstream oImg(dest, ios::out);
+				oImg << head << endl;
+				for (int i = 0; i < num_thread; i++)
+				{
+					while (oData[i].peek() != EOF && getline(oData[i], line))
+					{
+						string temp_Img;
+						oData[i] >> temp_Img;
+						oImg << temp_Img << endl;
+					}
+				}
+				oImg.close();
+			}	
 		}
 	}
 
@@ -288,5 +302,27 @@ namespace CLlib
 		iData >> val;
 
 		return val;
+	}
+
+	vector<string> string_partition(const string &source, char delim)
+	{
+		vector<string> result;
+		stringstream ss;
+		ss.str(source);
+		string item;
+
+		while (getline(ss, item, delim))
+		{
+			result.push_back(item);
+		}
+		return result;
+	}
+
+	string to_word(int Val)
+	{
+		char tempWord[20];
+		sprintf_s(tempWord, 20, "%d", Val);
+
+		return string{ tempWord };
 	}
 }

@@ -4,6 +4,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include "opencv2\opencv.hpp"
 
 #ifdef __APPLE__
 #include <OpenCL/opencl.h>
@@ -11,7 +12,12 @@
 #include <CL/cl.h>
 #endif
 
+#include <omp.h>
+
+#define __CLlib
+
 using namespace std;
+using namespace cv;
 
 namespace CLlib
 {
@@ -23,5 +29,7 @@ namespace CLlib
 
 	unsigned char to_uchar(string data);
 
-	void data_Pruning(string source, string dest, int start_Idx = 0);
+	vector<string> string_partition(const string &source, char delim);
+
+	void data_Pruning(string source, string dest, int dataSize, int start_Idx = 0);
 }

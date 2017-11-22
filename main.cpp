@@ -12,15 +12,11 @@
 #include <CL/cl.h>
 #endif
 
-#include <omp.h>
-
 int main()
 {
-
-	#pragma omp parallel
-	{
-		printf("<T:%d> - %d \n", omp_get_thread_num(), 0);
-	}
+	string input_Path{ R"(C:\Users\silent-HDD\Desktop\digit\test.csv)" };
+	string output_Path{ R"(C:\Users\silent-HDD\Desktop\digit\test_1.csv)" };
+	CLlib::data_Pruning(input_Path, output_Path, 24000, 0);
 
 	system("pause");
 	return 0;
