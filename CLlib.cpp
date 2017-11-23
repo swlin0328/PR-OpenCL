@@ -7,14 +7,14 @@ namespace CLlib
 		cl_int err;
 		cl_uint num;
 		err = clGetPlatformIDs(0, 0, &num);
-		if (err != CL_SUCCESS) 
+		if (err != CL_SUCCESS)
 		{
 			std::cerr << "Unable to get platforms\n";
 		}
 
 		std::vector<cl_platform_id> platforms(num);
 		err = clGetPlatformIDs(num, &platforms[0], &num);
-		if (err != CL_SUCCESS) 
+		if (err != CL_SUCCESS)
 		{
 			std::cerr << "Unable to get platform ID\n";
 		}
@@ -47,21 +47,21 @@ namespace CLlib
 		cl_int err;
 		cl_uint num;
 		err = clGetPlatformIDs(0, 0, &num);
-		if (err != CL_SUCCESS) 
+		if (err != CL_SUCCESS)
 		{
 			std::cerr << "Unable to get platforms\n";
 		}
 
 		std::vector<cl_platform_id> platforms(num);
 		err = clGetPlatformIDs(num, &platforms[0], &num);
-		if (err != CL_SUCCESS) 
+		if (err != CL_SUCCESS)
 		{
 			std::cerr << "Unable to get platform ID\n";
 		}
 
 		cl_context_properties prop[] = { CL_CONTEXT_PLATFORM, reinterpret_cast<cl_context_properties>(platforms[deviceNum]), 0 };
 		cl_context context = clCreateContextFromType(prop, CL_DEVICE_TYPE_DEFAULT, NULL, NULL, NULL);
-		if (context == 0) 
+		if (context == 0)
 		{
 			std::cerr << "Can't create OpenCL context\n";
 		}
@@ -78,7 +78,7 @@ namespace CLlib
 		std::cout << "Device: " << devname.c_str() << "\n";
 
 		cl_command_queue queue = clCreateCommandQueue(context, devices[0], 0, 0);
-		if (queue == 0) 
+		if (queue == 0)
 		{
 			std::cerr << "Can't create command queue\n";
 			clReleaseContext(context);
@@ -86,7 +86,7 @@ namespace CLlib
 
 		const int DATA_SIZE = 1048576;
 		std::vector<float> a(DATA_SIZE), b(DATA_SIZE), res(DATA_SIZE);
-		for (int i = 0; i < DATA_SIZE; i++) 
+		for (int i = 0; i < DATA_SIZE; i++)
 		{
 			a[i] = std::rand();
 			b[i] = std::rand();
@@ -95,7 +95,7 @@ namespace CLlib
 		cl_mem cl_a = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(cl_float) * DATA_SIZE, &a[0], NULL);
 		cl_mem cl_b = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(cl_float) * DATA_SIZE, &b[0], NULL);
 		cl_mem cl_res = clCreateBuffer(context, CL_MEM_WRITE_ONLY, sizeof(cl_float) * DATA_SIZE, NULL, NULL);
-		if (cl_a == 0 || cl_b == 0 || cl_res == 0) 
+		if (cl_a == 0 || cl_b == 0 || cl_res == 0)
 		{
 			std::cerr << "Can't create OpenCL buffer\n";
 			clReleaseMemObject(cl_a);
@@ -106,7 +106,7 @@ namespace CLlib
 		}
 
 		cl_program program = load_program(context, "testCL.cl");
-		if (program == 0) 
+		if (program == 0)
 		{
 			std::cerr << "Can't load or build program\n";
 			clReleaseMemObject(cl_a);
@@ -117,7 +117,7 @@ namespace CLlib
 		}
 
 		cl_kernel adder = clCreateKernel(program, "adder", 0);
-		if (adder == 0) 
+		if (adder == 0)
 		{
 			std::cerr << "Can't load kernel\n";
 			clReleaseProgram(program);
@@ -135,32 +135,32 @@ namespace CLlib
 		size_t work_size = DATA_SIZE;
 		err = clEnqueueNDRangeKernel(queue, adder, 1, 0, &work_size, 0, 0, 0, 0);
 
-		if (err == CL_SUCCESS) 
+		if (err == CL_SUCCESS)
 		{
 			err = clEnqueueReadBuffer(queue, cl_res, CL_TRUE, 0, sizeof(float) * DATA_SIZE, &res[0], 0, 0, 0);
 		}
 
-		if (err == CL_SUCCESS) 
+		if (err == CL_SUCCESS)
 		{
 			bool correct = true;
 			for (int i = 0; i < DATA_SIZE; i++) {
-				if (a[i] + b[i] != res[i]) 
+				if (a[i] + b[i] != res[i])
 				{
 					correct = false;
 					break;
 				}
 			}
 
-			if (correct) 
+			if (correct)
 			{
 				std::cout << "Data is correct\n";
 			}
-			else 
+			else
 			{
 				std::cout << "Data is incorrect\n";
 			}
 		}
-		else 
+		else
 		{
 			std::cerr << "Can't run kernel or read back data\n";
 		}
@@ -178,7 +178,7 @@ namespace CLlib
 	cl_program load_program(cl_context context, const char* filename)
 	{
 		std::ifstream in(filename, std::ios_base::binary);
-		if (!in.good()) 
+		if (!in.good())
 		{
 			return 0;
 		}
@@ -196,12 +196,12 @@ namespace CLlib
 		// create and build program 
 		const char* source = &data[0];
 		cl_program program = clCreateProgramWithSource(context, 1, &source, 0, 0);
-		if (program == 0) 
+		if (program == 0)
 		{
 			return 0;
 		}
 
-		if (clBuildProgram(program, 0, 0, 0, 0, 0) != CL_SUCCESS) 
+		if (clBuildProgram(program, 0, 0, 0, 0, 0) != CL_SUCCESS)
 		{
 			return 0;
 		}
@@ -211,7 +211,7 @@ namespace CLlib
 
 	void data_Pruning(string source, string dest, int dataSize, int start_Idx)
 	{
-		int num_thread = omp_get_num_threads() -1;
+		int num_thread = omp_get_num_threads() - 1;
 		ifstream iData(source, ios::in);
 		vector<stringstream> oData(num_thread);
 		vector<string> raw_Data;
@@ -219,18 +219,25 @@ namespace CLlib
 		getline(iData, head);
 
 		//變數宣告
-		vector<Mat> srcImages(dataSize);
-		vector<vector<uchar>> srcVec(dataSize);
-	
+		vector<Mat> srcImages;
+		vector<vector<uchar>> srcVec;
+
+		for (int i = 0; i < dataSize; i++)
+		{
+			srcImages.push_back(Mat::zeros(Size(28, 28), CV_8UC1));
+			srcVec.push_back(vector<uchar>(28 * 28, 0));
+		}
+
 		#pragma omp parallel num_threads(num_thread) shared(start_Idx, raw_Data, srcImages, srcVec, oData)
 		{
 			//讀取圖片
-			#pragma omp single
+			#pragma omp master
 			{
 				int idx = 0;
-				while (iData.peek() != EOF && getline(iData, line))
+				while (iData.peek() != EOF && getline(iData, line) && idx < dataSize)
 				{
-					#pragma omp task shared(srcImages) firstprivate(idx++)
+					idx++;
+					#pragma omp task shared(srcImages) firstprivate(idx)
 					{
 						vector<uchar> img;
 						vector<string> readData;
@@ -241,7 +248,7 @@ namespace CLlib
 							img.push_back(to_uchar(readData[i]));
 						}
 						Mat img_Mat(Size(28, 28), CV_8UC1, img.data());
-						srcImages[idx] = move(img_Mat);
+						cv::swap(srcImages[idx], img_Mat);
 					}
 				}
 				#pragma omp taskwait
@@ -252,14 +259,21 @@ namespace CLlib
 			#pragma omp for nowait schedule(static)
 			for (int i = 0; i < srcImages.size(); i++)
 			{
-				medianBlur(srcImages[i], srcImages[i], 3);
-				equalizeHist(srcImages[i], srcImages[i]);
+				Mat dst1, dst2;
+
+				//blur
+				medianBlur(srcImages[i], dst1, 3);
+				cv::swap(srcImages[i], dst1);
+
+				//sharp
+				equalizeHist(srcImages[i], dst2);
+				cv::swap(srcImages[i], dst2);
 
 				//Mat to 1-dim
 				srcImages[i] = srcImages[i].reshape(0, 1);
 				const uchar* p = srcImages[i].data;
 				vector<uchar> src(p, p + srcImages[i].cols);
-				srcVec[i] = move(src);
+				std::swap(srcVec[i], src);
 			}
 
 			//輸出圖片
@@ -291,7 +305,7 @@ namespace CLlib
 					}
 				}
 				oImg.close();
-			}	
+			}
 		}
 	}
 

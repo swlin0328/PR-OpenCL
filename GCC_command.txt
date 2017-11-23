@@ -1,3 +1,5 @@
+cmake -D CMAKE_BUILD_TYPE=Debug -G "MinGW Makefiles"  CMakeLists.txt
+
 g++ -I C:\Users\Acer\Documents\opencv\build\include -c -o CLlib.o CLlib.cpp
 
 g++ -I C:\Users\Acer\Documents\opencv\build\include -c -o main.o main.cpp
