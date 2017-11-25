@@ -26,9 +26,17 @@ namespace CLlib
 {
 	void queueDevice();
 
-	void testCL(int deviceNum);
+	cl_int makeCL_Program(int deviceNum, vector<float>& source1, vector<float>& source2, vector<float>& res, const char* filename);
 
-	cl_program load_program(cl_context context, const char* filename);
+	vector<cl_platform_id> getPlatform();
+
+	vector<cl_device_id> GetContextInfo(cl_context& context);
+
+	void setMemContext(cl_context& context, cl_command_queue queue, vector<cl_mem>& mem_set, vector<float>& source1, vector<float>& source2, vector<float>& res);
+
+	cl_program load_program(cl_context& context, const char* filename);
+
+	void test_CL_program(int deviceNum);
 
 	unsigned char to_uchar(string data);
 

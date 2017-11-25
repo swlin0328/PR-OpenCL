@@ -42,7 +42,80 @@ namespace CLlib
 		}
 	}
 
-	void testCL(int deviceNum)
+	cl_int makeCL_Program(int deviceNum, vector<float>& source1, vector<float>& source2, vector<float>& res, const char* filename)
+	{
+		cl_int err;
+		vector<cl_platform_id> platforms{ getPlatform() };
+
+		//create context
+		cl_context_properties prop[] = { CL_CONTEXT_PLATFORM, reinterpret_cast<cl_context_properties>(platforms[deviceNum]), 0 };
+		cl_context context = clCreateContextFromType(prop, CL_DEVICE_TYPE_DEFAULT, NULL, NULL, NULL);
+		if (context == 0)
+		{
+			std::cerr << "Can't create OpenCL context\n";
+		}
+		vector<cl_device_id> devices{ GetContextInfo(context) };
+
+		//command_queue
+		cl_command_queue queue = clCreateCommandQueue(context, devices[0], 0, 0);
+		if (queue == 0)
+		{
+			std::cerr << "Can't create command queue\n";
+			clReleaseContext(context);
+		}
+
+		//set memory and data on CL device
+		vector<cl_mem> mem_set;
+		setMemContext(context, queue, mem_set, source1, source2, res);
+
+		//build program on CL device
+		cl_program program = load_program(context, filename);
+		if (program == 0)
+		{
+			std::cerr << "Can't load or build program\n";
+			clReleaseMemObject(mem_set[0]);
+			clReleaseMemObject(mem_set[1]);
+			clReleaseMemObject(mem_set[2]);
+			clReleaseCommandQueue(queue);
+			clReleaseContext(context);
+		}
+
+		//load program to kernel
+		cl_kernel kernel_Cal = clCreateKernel(program, "kernel_Cal", 0);
+		if (kernel_Cal == 0)
+		{
+			std::cerr << "Can't load kernel\n";
+			clReleaseProgram(program);
+			clReleaseMemObject(mem_set[0]);
+			clReleaseMemObject(mem_set[1]);
+			clReleaseMemObject(mem_set[2]);
+			clReleaseCommandQueue(queue);
+			clReleaseContext(context);
+		}
+
+		//Set program arguments and read the results to main
+		clSetKernelArg(kernel_Cal, 0, sizeof(cl_mem), &mem_set[0]);
+		clSetKernelArg(kernel_Cal, 1, sizeof(cl_mem), &mem_set[1]);
+		clSetKernelArg(kernel_Cal, 2, sizeof(cl_mem), &mem_set[2]);
+
+		size_t work_size = source1.size();
+		err = clEnqueueNDRangeKernel(queue, kernel_Cal, 1, 0, &work_size, 0, 0, 0, 0);
+		if (err == CL_SUCCESS)
+		{
+			err = clEnqueueReadBuffer(queue, mem_set[2], CL_TRUE, 0, sizeof(float) * res.size(), &res[0], 0, 0, 0);
+		}
+
+		clReleaseKernel(kernel_Cal);
+		clReleaseProgram(program);
+		clReleaseMemObject(mem_set[0]);
+		clReleaseMemObject(mem_set[1]);
+		clReleaseMemObject(mem_set[2]);
+		clReleaseCommandQueue(queue);
+		clReleaseContext(context);
+		return err;
+	}
+
+	vector<cl_platform_id> getPlatform()
 	{
 		cl_int err;
 		cl_uint num;
@@ -58,14 +131,11 @@ namespace CLlib
 		{
 			std::cerr << "Unable to get platform ID\n";
 		}
+		return platforms;
+	}
 
-		cl_context_properties prop[] = { CL_CONTEXT_PLATFORM, reinterpret_cast<cl_context_properties>(platforms[deviceNum]), 0 };
-		cl_context context = clCreateContextFromType(prop, CL_DEVICE_TYPE_DEFAULT, NULL, NULL, NULL);
-		if (context == 0)
-		{
-			std::cerr << "Can't create OpenCL context\n";
-		}
-
+	vector<cl_device_id> GetContextInfo(cl_context& context)
+	{
 		size_t cb;
 		clGetContextInfo(context, CL_CONTEXT_DEVICES, 0, NULL, &cb);
 		std::vector<cl_device_id> devices(cb / sizeof(cl_device_id));
@@ -77,24 +147,20 @@ namespace CLlib
 		clGetDeviceInfo(devices[0], CL_DEVICE_NAME, cb, &devname[0], 0);
 		std::cout << "Device: " << devname.c_str() << "\n";
 
-		cl_command_queue queue = clCreateCommandQueue(context, devices[0], 0, 0);
-		if (queue == 0)
-		{
-			std::cerr << "Can't create command queue\n";
-			clReleaseContext(context);
-		}
+		return devices;
+	}
 
-		const int DATA_SIZE = 1048576;
-		std::vector<float> a(DATA_SIZE), b(DATA_SIZE), res(DATA_SIZE);
-		for (int i = 0; i < DATA_SIZE; i++)
-		{
-			a[i] = std::rand();
-			b[i] = std::rand();
-		}
+	void setMemContext(cl_context& context, cl_command_queue queue, vector<cl_mem>& mem_set, vector<float>& source1, vector<float>& source2, vector<float>& res)
+	{
+		//Create memory on CL device
+		cl_mem cl_a = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(cl_float) * source1.size(), &source1[0], NULL);
+		cl_mem cl_b = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(cl_float) * source2.size(), &source2[0], NULL);
+		cl_mem cl_res = clCreateBuffer(context, CL_MEM_WRITE_ONLY, sizeof(cl_float) * res.size(), NULL, NULL);
 
-		cl_mem cl_a = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(cl_float) * DATA_SIZE, &a[0], NULL);
-		cl_mem cl_b = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(cl_float) * DATA_SIZE, &b[0], NULL);
-		cl_mem cl_res = clCreateBuffer(context, CL_MEM_WRITE_ONLY, sizeof(cl_float) * DATA_SIZE, NULL, NULL);
+		mem_set.push_back(cl_a);
+		mem_set.push_back(cl_b);
+		mem_set.push_back(cl_res);
+
 		if (cl_a == 0 || cl_b == 0 || cl_res == 0)
 		{
 			std::cerr << "Can't create OpenCL buffer\n";
@@ -104,78 +170,9 @@ namespace CLlib
 			clReleaseCommandQueue(queue);
 			clReleaseContext(context);
 		}
-
-		cl_program program = load_program(context, "testCL.cl");
-		if (program == 0)
-		{
-			std::cerr << "Can't load or build program\n";
-			clReleaseMemObject(cl_a);
-			clReleaseMemObject(cl_b);
-			clReleaseMemObject(cl_res);
-			clReleaseCommandQueue(queue);
-			clReleaseContext(context);
-		}
-
-		cl_kernel adder = clCreateKernel(program, "adder", 0);
-		if (adder == 0)
-		{
-			std::cerr << "Can't load kernel\n";
-			clReleaseProgram(program);
-			clReleaseMemObject(cl_a);
-			clReleaseMemObject(cl_b);
-			clReleaseMemObject(cl_res);
-			clReleaseCommandQueue(queue);
-			clReleaseContext(context);
-		}
-
-		clSetKernelArg(adder, 0, sizeof(cl_mem), &cl_a);
-		clSetKernelArg(adder, 1, sizeof(cl_mem), &cl_b);
-		clSetKernelArg(adder, 2, sizeof(cl_mem), &cl_res);
-
-		size_t work_size = DATA_SIZE;
-		err = clEnqueueNDRangeKernel(queue, adder, 1, 0, &work_size, 0, 0, 0, 0);
-
-		if (err == CL_SUCCESS)
-		{
-			err = clEnqueueReadBuffer(queue, cl_res, CL_TRUE, 0, sizeof(float) * DATA_SIZE, &res[0], 0, 0, 0);
-		}
-
-		if (err == CL_SUCCESS)
-		{
-			bool correct = true;
-			for (int i = 0; i < DATA_SIZE; i++) {
-				if (a[i] + b[i] != res[i])
-				{
-					correct = false;
-					break;
-				}
-			}
-
-			if (correct)
-			{
-				std::cout << "Data is correct\n";
-			}
-			else
-			{
-				std::cout << "Data is incorrect\n";
-			}
-		}
-		else
-		{
-			std::cerr << "Can't run kernel or read back data\n";
-		}
-
-		clReleaseKernel(adder);
-		clReleaseProgram(program);
-		clReleaseMemObject(cl_a);
-		clReleaseMemObject(cl_b);
-		clReleaseMemObject(cl_res);
-		clReleaseCommandQueue(queue);
-		clReleaseContext(context);
 	}
 
-
-	cl_program load_program(cl_context context, const char* filename)
+	cl_program load_program(cl_context& context, const char* filename)
 	{
 		std::ifstream in(filename, std::ios_base::binary);
 		if (!in.good())
@@ -207,6 +204,45 @@ namespace CLlib
 		}
 
 		return program;
+	}
+
+	void test_CL_program(int deviceNum)
+	{
+		cl_int err;
+
+		const int DATA_SIZE = 1048576;
+		std::vector<float> test_data1(DATA_SIZE), test_data2(DATA_SIZE), res(DATA_SIZE);
+		for (int i = 0; i < DATA_SIZE; i++)
+		{
+			test_data1[i] = std::rand();
+			test_data2[i] = std::rand();
+		}
+		err = makeCL_Program(deviceNum, test_data1, test_data2, res, "testCL.cl");
+
+		if (err == CL_SUCCESS)
+		{
+			bool correct = true;
+			for (int i = 0; i < DATA_SIZE; i++) {
+				if (test_data1[i] + test_data2[i] != res[i])
+				{
+					correct = false;
+					break;
+				}
+			}
+
+			if (correct)
+			{
+				std::cout << "Data is correct\n";
+			}
+			else
+			{
+				std::cout << "Data is incorrect\n";
+			}
+		}
+		else
+		{
+			std::cerr << "Can't run kernel or read back data\n";
+		}
 	}
 
 	void data_Pruning(string source, string dest, int dataSize, int start_Idx)
