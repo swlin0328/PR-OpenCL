@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include "CLlib.h"
+#include "MPlib.h"
 #include "time.h"
 
 #ifdef __APPLE__
@@ -21,7 +22,7 @@ int main()
 	double stageStartTime, stageEndTime;
 	stageStartTime = omp_get_wtime();
 
-	CLlib::data_Pruning(input_Path, output_Path, 24000, 0);
+	MPlib::data_Pruning(input_Path, output_Path, 24000, 0);
 
 	stageEndTime = omp_get_wtime();
 	printf("time = %.2f s\n", stageEndTime - stageStartTime);

@@ -15,8 +15,6 @@
 #include <CL/cl.h>
 #endif
 
-#include <omp.h>
-
 #define __CLlib
 
 using namespace std;
@@ -37,10 +35,4 @@ namespace CLlib
 	cl_program load_program(cl_context& context, const char* filename);
 
 	void test_CL_program(int deviceNum);
-
-	unsigned char to_uchar(string data);
-
-	vector<string> string_partition(const string &source, char delim);
-
-	void data_Pruning(string source, string dest, int dataSize, int start_Idx = 0);
 }
